@@ -1,0 +1,19 @@
+.FeedCard {
+  & > div:first-child {
+    margin-top: 0px;
+  }
+  & > div {
+    margin-bottom: 5px;
+    margin-top: 5px;
+    max-width: 600px;
+    * {
+      font-size: 20px;
+    }
+    span > svg {
+      font-size: 28px;
+    }
+    & div.avatar {
+      margin-right: 10px;
+    }
+  }
+}

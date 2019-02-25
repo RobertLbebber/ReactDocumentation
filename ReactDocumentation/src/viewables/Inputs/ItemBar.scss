@@ -1,0 +1,8 @@
+.ItemBar {
+  overflow-y: auto;
+  max-height: 250px;
+  margin-left: 5px;
+  .ItemCard {
+    margin-right: 5px;
+  }
+}

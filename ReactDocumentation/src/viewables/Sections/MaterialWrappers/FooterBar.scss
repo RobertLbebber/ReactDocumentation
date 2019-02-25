@@ -1,0 +1,23 @@
+// @import "../../../util/styles/_standards";
+
+header.FooterBar {
+  background-color: $brand-secondary;
+  position: fixed;
+  button.post-btn {
+    position: absolute;
+    background-color: $brand-tertiary;
+    color: $brand-primary;
+    z-index: 1;
+    top: -30;
+    left: 45%;
+    margin: 0 auto;
+    border-radius: 30px;
+    svg {
+      font-size: 55px;
+    }
+    &.active {
+      background-color: $brand-primary;
+      color: $brand-tertiary;
+    }
+  }
+}

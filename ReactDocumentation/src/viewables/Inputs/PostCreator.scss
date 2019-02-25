@@ -1,0 +1,42 @@
+.PostCreator {
+  .PostCreator-body {
+    form {
+      margin-bottom: 0px;
+      .post-form {
+        display: flex;
+        padding: 0px;
+        padding-top: 5px;
+        margin: 0px;
+        textarea {
+          resize: none;
+          border: none;
+          &:focus {
+            box-shadow: none;
+          }
+        }
+      }
+      .post-buttons {
+        margin: 1rem;
+        margin-bottom: 0px;
+        justify-content: center;
+        height: 50px;
+        .post-button input.form-control-file {
+          display: none;
+        }
+      }
+      hr {
+        margin-top: 0px;
+      }
+    }
+  }
+  &-modal {
+    & .modal-body {
+      margin: 0px;
+      padding: 0px;
+    }
+    & .modal-header,
+    & .modal-footer {
+      background-color: $brand-grey;
+    }
+  }
+}
