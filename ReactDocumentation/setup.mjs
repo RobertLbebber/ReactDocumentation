@@ -3,6 +3,7 @@
 import git from "simple-git/promise";
 import util from "util";
 import { exec } from "child_process";
+import fs from "graceful-fs";
 import _ from "lodash";
 import CreateLibrary from "./src/createLibrary.mjs";
 
@@ -36,22 +37,20 @@ import CreateLibrary from "./src/createLibrary.mjs";
  * |                     |
  * |_____________________|
  */
-//The directory that the latest version of the components will be put in
 //Remember to add this to the .gitignore
-const targetDirectory = "latest-pull/";
 //The path to the targetDirectory from pwd of package.json
 const path = "src/";
+//The directory that the latest version of the components will be put in
+const targetDirectory = "latest-pull/";
 //Location for the repo pull, this is not the final location of the components
-const targetLocation = path + targetDirectory;
+const targetLocation = path + targetDirectory; // "src/latest-pull"
 const gitCloneRepoUrl = "https://github.com/RobertLbebber/NukeReactor.git";
 //The location of the components to be shown in Live Viewer
-const componentDirecotoriesForLive = [
-  targetLocation + "frontend/src/components/Inputs",
-  targetLocation + "frontend/src/components/Sections",
-  targetLocation + "frontend/src/components/Util"
-];
-const cssExtension = ".scss";
-const exportSCSS = "_export" + cssExtension;
+const componentDirecotoryForLive = targetLocation + "frontend/src/components/"; // "src/latest-pull/frontend/src/"
+const libraryPackageJsonDir = targetLocation + "frontend/package.json"; // "src/latest-pull/frontend/package.json"
+const libraryCssBuild = targetLocation + "frontend/src/build/index.css"; // "src/latest-pull/frontend/src/"
+// const cssExtension = ".scss";
+// const exportSCSS = "_export" + cssExtension;
 /**
  * _______________________
  * |                     |
@@ -128,11 +127,6 @@ async function wipeLocalRepo() {
       resolve();
     });
   });
-  await new Promise(async resolve => {
-    await exec("rm -rf src/viewables/*", () => {
-      resolve();
-    });
-  });
 }
 
 /**
@@ -156,44 +150,25 @@ async function pullingRepo() {
   log(sucColor, "Done Pulling From Git");
 }
 
-/**
- * This method will need to be edited the most if repurposed
- *
- * This method is responsible for finding the components from the third party library for viewing.
- */
-async function findDesiredComponents() {
-  log(staColor, "Finding the Components and Moving them to src/viewables");
-  await new Promise(async (resolve, reject) => {
-    _.map(componentDirecotoriesForLive, async componentDirs => {
-      console.log(componentDirs);
-      await run("cp -r ./" + componentDirs + " ./src/viewables/").then(() => {
-        console.log("One Finished");
-        resolve();
-      });
-    });
-  });
-  log(sucColor, "All Finished");
-}
-
-async function populateCSSExports(wasUpdated) {
-  let componentDirList = [];
-  await new Promise(resolve =>
-    run("ls ./src/viewables/", async (err, stdout, stderr) => {
-      componentDirList = _.split(stdout, /[\n]/g);
-      componentDirList = _.filter(componentDirList, item => item.length > 0);
-      let content = [];
-      await _.map(componentDirList, component => {
-        content.push('@import "./src/viewables/' + component + "/" + exportSCSS + '"; ');
-      });
-      let topComponents = content.join(" ");
-      console.log(topComponents);
-      await exec("echo " + topComponents + " >> ./src/" + exportSCSS, (err, stdout, stderr) => {
-        console.log("CSS File " + sucColor + (wasUpdated ? "Updated" : "Added") + defColor);
-        resolve();
-      });
-    })
-  );
-}
+// async function populateCSSExports(wasUpdated) {
+//   let componentDirList = [];
+//   await new Promise(resolve =>
+//     run("ls ./src/viewables/", async (err, stdout, stderr) => {
+//       componentDirList = _.split(stdout, /[\n]/g);
+//       componentDirList = _.filter(componentDirList, item => item.length > 0);
+//       let content = [];
+//       await _.map(componentDirList, component => {
+//         content.push('@import "./src/viewables/' + component + "/" + exportSCSS + '"; ');
+//       });
+//       let topComponents = content.join(" ");
+//       console.log(topComponents);
+//       await exec("echo " + topComponents + " >> ./src/" + exportSCSS, (err, stdout, stderr) => {
+//         console.log("CSS File " + sucColor + (wasUpdated ? "Updated" : "Added") + defColor);
+//         resolve();
+//       });
+//     })
+//   );
+// }
 
 async function connectCSS() {
   log(staColor, "Connecting Third Party Lirbrary CSS");
@@ -202,37 +177,67 @@ async function connectCSS() {
     "-- in order for CSS connection to work, the third party must be using SCSS or LESS with _export in the component Directories"
   );
   let wasUpdated = false;
-  await new Promise(resolve =>
-    run(" ls ./src/", async (error, stdout, stderr) => {
-      wasUpdated = _.includes(stdout, exportSCSS);
-      run(" rm -rf ./src/" + exportSCSS, async () => {
-        console.log("Removed cached CSS files");
-        await populateCSSExports(wasUpdated);
-        log(sucColor, "Connected Third Party Lirbrary CSS");
-        resolve();
-      });
-    })
-  );
+  // await new Promise(resolve =>
+  //   run(" ls ./src/", async (error, stdout, stderr) => {
+  //     wasUpdated = _.includes(stdout, exportSCSS);
+  //     run(" rm -rf ./src/" + exportSCSS, async () => {
+  //       console.log("Removed cached CSS files");
+  //       await populateCSSExports(wasUpdated);
+  //       log(sucColor, "Connected Third Party Lirbrary CSS");
+  //       resolve();
+  //     });
+  //   })
+  // );
+  fs.copyFile(libraryCssBuild, "./src/generated/library.css", (err, data) => {
+    console.log(err, data);
+  });
+}
+
+async function updatePackageJson() {
+  log(staColor, "Updating the 1st Party Package.json");
+  let packageJsonDependencies = [];
+  let packageJsonDevDependencies = [];
+  await fs.readFile(libraryPackageJsonDir, "utf8", async (err, data) => {
+    packageJsonDependencies = JSON.parse(data).dependencies;
+    packageJsonDevDependencies = JSON.parse(data).devDependencies;
+    await fs.readFile("./package.json", "utf8", async (err, data) => {
+      let localJson = JSON.parse(data);
+      localJson.devDependencies = localJson.devDependencies ? localJson.devDependencies : [];
+      _.merge(localJson.dependencies, packageJsonDependencies);
+      _.merge(localJson.devDependencies, packageJsonDevDependencies);
+      console.log(localJson.toString());
+      await fs.writeFile(
+        "./package.temp.json",
+        JSON.stringify(localJson),
+        "utf8",
+        async (err, data) => {
+          if (_.isNil(err)) {
+            await fs.rename("./package.temp.json", "./package.json", () => {});
+          }
+        }
+      );
+    });
+  });
 }
 
 /**
  * This method creates a list of the top level directories from the thirs party library
  */
-async function generateList() {
-  log(staColor, "Generating a List of Components");
-  let componentDirList = [];
-  await new Promise(resolve =>
-    run("rm -rf ./src/components.txt", (a, b, c) =>
-      run("ls ./src/viewables/", async (err, stdout, stderr) => {
-        componentDirList = _.split(stdout, /[\n]/g);
-        await run(" echo " + componentDirList + " >> ./src/components.txt", () => {
-          log(sucColor, "List of Components Generated");
-          resolve();
-        });
-      })
-    )
-  );
-}
+// async function generateList() {
+//   log(staColor, "Generating a List of Components");
+//   let componentDirList = [];
+//   await new Promise(resolve =>
+//     run("rm -rf ./src/components.txt", (a, b, c) =>
+//       run("ls ./src/viewables/", async (err, stdout, stderr) => {
+//         componentDirList = _.split(stdout, /[\n]/g);
+//         await run(" echo " + componentDirList + " >> ./src/components.txt", () => {
+//           log(sucColor, "List of Components Generated");
+//           resolve();
+//         });
+//       })
+//     )
+//   );
+// }
 
 /**
  * _______________________
@@ -249,11 +254,19 @@ async function generateList() {
  */
 
 async function startScript() {
-  // chain(pullingRepo, () =>
-  chain(findDesiredComponents, () =>
-    chain(generateList, () => chain(connectCSS, () => chain(CreateLibrary, () => {})))
+  await chain(
+    pullingRepo,
+    () =>
+      // chain(findDesiredComponents, () =>
+      // chain(generateList, () =>
+      chain(connectCSS, () => chain(CreateLibrary, () => chain(updatePackageJson, () => {})))
+    // )
+    // );
   );
-  // );
+  log(
+    warColor,
+    "Make sure to run npm install before running npm start to update the package.json file!"
+  );
 }
 
 startScript();

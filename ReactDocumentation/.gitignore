@@ -22,4 +22,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-src/latest-pull
+src/latest-pull/
+src/generated/*
+!src/generated/readMe.txt
